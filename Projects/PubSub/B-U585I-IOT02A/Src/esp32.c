@@ -55,10 +55,10 @@ static char* esp32_execute_command(char *command, unsigned long timeout_ms)
   }
 
   if ((strcmp(command, "AT+RST\r\n") == 0)) {
-	  command_flag = 1;  //RST command
+	  command_flag = 1;  // RST command
   }
   else if ((strncmp(command, "AT+CIPSNTPCFG", 13) == 0)) {
-	  command_flag = 2;  //SNTP command
+	  command_flag = 2;  // SNTP command
   }
   else if ((strncmp(command, "AT+MQTTPUBRAW", 13) == 0)) {
 	  command_flag = 3;
@@ -79,7 +79,7 @@ static char* esp32_execute_command(char *command, unsigned long timeout_ms)
 
   HAL_UART_Transmit(&ESP32_USART_HANDLER, (uint8_t* )command, command_size, timeout_ms);
 
-if (!command_flag) { //command flag is 0
+if (!command_flag) { // command flag is 0
 	  do
 	  {
 	    USART_STATUS = HAL_UART_Receive(&ESP32_USART_HANDLER, (uint8_t* )&response[i], 1, timeout_ms);
@@ -87,15 +87,15 @@ if (!command_flag) { //command flag is 0
 
 	    if (i > 3) {
 	      if ((response[i - 1] == '\n') && (response[i - 2] == '\r') && (response[i - 3] == 'K') && (response[i - 4] == 'O')) {
-	    	  break;  //\r\nOK\r\n
+	    	  break;  // \r\nOK\r\n
 	      }
 	      else if ((response[i - 1] == '\n') && (response[i - 2] == '\r') && (response[i - 3] == 'R') && (response[i - 4] == 'O')) {
-	    	  break;  //\r\nERROR\r\n
+	    	  break;  // \r\nERROR\r\n
 	      }
 	    }
 	  } while ((USART_STATUS != HAL_TIMEOUT));
 }
-else {  //command_flag is 1 or 2 or 3
+else {  // command_flag is 1 or 2 or 3
   do
   {
     USART_STATUS = HAL_UART_Receive(&ESP32_USART_HANDLER, (uint8_t* )&response[i], 1, timeout_ms);
@@ -104,19 +104,19 @@ else {  //command_flag is 1 or 2 or 3
     if (i > 3) {
       if ((response[i - 1] == '\n') && (response[i - 2] == '\r') && (response[i - 3] == 'P') && (response[i - 4] == 'I')) {
       	if (command_flag == 1) {
-      	  //printf("i is %d and  GOT IP\r\n", i);
+      	  // printf("i is %d and  GOT IP\r\n", i);
           break;
       	}
       }
       else if ((response[i - 1] == '\n') && (response[i - 2] == '\r') && (response[i - 3] == 'D') && (response[i - 4] == 'E')) {
       	if (command_flag == 2) {
-    	  //printf("i is %d and UPDATED\r\n", i);
+    	  // printf("i is %d and UPDATED\r\n", i);
       	  break;
       	}
       }
       else if ((response[i - 1] == '>') && (response[i - 2] == '\n') && (response[i - 3] == '\r')) {
       	if (command_flag == 3) {
-    	  //printf("i is %d and >>>>>\r\n", i);
+    	  // printf("i is %d and >>>>>\r\n", i);
       	  break;
       	}
       }

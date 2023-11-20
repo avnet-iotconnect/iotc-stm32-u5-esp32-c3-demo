@@ -25,55 +25,39 @@
 #include <stdlib.h>
 #include <string.h>
 #include "esp32.h"
-
 #include "iotconnect_telemetry.h"
 #include "iotconnect_lib.h"
 
 /* USER CODE END Includes */
 
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
 /* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-#define MQTT_PUBLISH_TIME_BETWEEN_MS         ( 10000 )
 
-#define NUMBER_OF_LOOPS   (3600000/MQTT_PUBLISH_TIME_BETWEEN_MS) /* Loop for 1h */
+#define MQTT_PUBLISH_TIME_BETWEEN_MS        ( 5000 )
+#define NUMBER_OF_MSG						200
 
-#define APP_VERSION							"01.00.03"
+#define APP_VERSION							"01.00.01"
 
-#define SSID                                "liuxuxu24"
-#define WIFI_PW                             "3157063540"
+#define WIFI_SSID							"your-wifi-ssid"
+#define WIFI_PW							"your-wifi-password"
+
 #define SNTP_SERVER							"time.google.com"
 
 #define MQTT_HOST							"poc-iotconnect-iothub-030-eu2.azure-devices.net"
-#define MQTT_CLIENT_ID                      "avtds-esp32test"
-#define MQTT_USERNAME_FORMAT                "%s/%s/?api-version=2018-06-30"
-#define MQTT_TOPIC_FORMAT                   "devices/%s/messages/events/"
+#define MQTT_CLIENT_ID						""
+#define MQTT_USERNAME_FORMAT				"%s/%s/?api-version=2018-06-30"
+#define MQTT_TOPIC_FORMAT					"devices/%s/messages/events/"
 
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
 
 UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart3;
 
 
-/* USER CODE BEGIN PV */
 static char* response;
-
 static char command_buffer [ 256 ] = {0};
 static char payloadBuf[ 512 ]      = {0};
+static IotclConfig config_esp32;
+uint32_t nloops = 1 * NUMBER_OF_MSG;
 
-uint32_t nloops = 5 * NUMBER_OF_LOOPS;
-/* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -86,9 +70,6 @@ static void MX_ICACHE_Init(void);
 
 static void appInit(void);
 static void Process(void);
-
-static int string_add_backslash(char* , char*);
-IotclConfig config_esp32;
 
 static void populate_iotcl_config(void) {
 	config_esp32.device.env = "avnetpoc";
@@ -105,38 +86,22 @@ static void populate_iotcl_config(void) {
 static int check_at_response(char* at_response) {
 	int len = strlen(at_response);
 	if (len > 255) {
+		printf("AT response length is too long\r\n");
 		return 0;
 	}
 	strcpy(command_buffer, at_response);
 
 	if (strcmp(&command_buffer[len - 4], "OK\r\n") == 0) {
 		if ((strncmp(command_buffer, "AT+MQTTCONN?", 12) == 0) || (strcmp(&command_buffer[26], "4") == 0)) {
-			printf("MQTT connection check is OK\r\n");
+			// printf("MQTT connection check is OK\r\n");
 			return 2;
 		}
 		return 1;
 	}
+	printf("AT response is ERROR\r\n");
 	return 0;
 }
 
-static char* name_nonewline(char* str) {
-	char* temp = str;
-	int len = strlen(str);
-	if (len <= 0 || len > 127) {
-		return NULL;
-	}
-	for (int i = 0; i < len + 1; i++) {
-		if (*str == '\n' || *str == '\r') {
-			*str = '\0';
-			str++;
-		}
-		else {
-			str++;
-		}
-	}
-	printf("ThingName is %s\n", temp);
-	return temp;
-}
 // publish telemetry data to iotc
 static char* publish_telemetry() {
     IotclMessageHandle msg = iotcl_telemetry_create();
@@ -156,37 +121,60 @@ static void send_telemetry_data(void) {
 	populate_iotcl_config();
 	char* data = publish_telemetry();
 	if (data == NULL) {
-		printf("data is NULL...\n");
+		printf("Publish telemetry is NULL...\n");
 	  	return;
 	}
-	/*
-	char* temp = &payloadBuf[0];
-	int result = string_add_backslash(data, temp);
-	if (result != 0) {
-		printf("Add backslash failed!\r\n");
-		return;
-	}
-	*/
+
 	strcpy(payloadBuf, data);
-	printf("Telemetry data is %s\r\n", payloadBuf);
 	iotcl_destroy_serialized(data);
 
 	int payload_len = strlen(payloadBuf);
-	printf("length of MQTT raw data is %d\r\n", payload_len);
+	printf("Data is %s\r\nLength is %d\r\n", payloadBuf, payload_len);
+
 	sprintf(command_buffer, MQTT_TOPIC_FORMAT, MQTT_CLIENT_ID);
 	esp32_mqtt_pub_raw(command_buffer, payload_len);
 	esp32_mqtt_send_raw_data(payloadBuf);
 }
+
+static int string_add_backslash(char* data, char* output_str) {
+  bool add_backslash = false;
+  int str_len = strlen(data);
+  if (str_len > 256) {
+	  return -1;
+  }
+  for (int i = 0; i < str_len + 1; i++) {  //strlen(data)+1 is for the last char \0
+	  switch (*data) {
+	    case '"':
+		  add_backslash = true;
+		  break;
+	    case '\\':
+		  add_backslash = true;
+		  break;
+	    case ',':
+	      add_backslash = true;
+	      break;
+	    default:
+	      add_backslash = false;
+	      break;
+	  }
+	  if (add_backslash) {
+		  *output_str = '\\';
+		  output_str++;
+	  }
+
+	  *output_str = *data;
+	  output_str++;
+	  data++;
+  }
+  return 0;
+}
+
 /**
   * @brief  The application entry point.
   * @retval int
   */
 int main(void)
 {
-  /* USER CODE BEGIN 1 */
-  
-  /* USER CODE END 1 */
-
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
@@ -196,26 +184,17 @@ int main(void)
 
   LL_AHB3_GRP1_EnableClock(LL_AHB3_GRP1_PERIPH_PWR);
 
-  /* USER CODE BEGIN Init */
-  
-  /* USER CODE END Init */
-
   /* Configure the system clock */
   SystemClock_Config();
 
   /* Configure the System Power */
   SystemPower_Config();
 
-  /* USER CODE BEGIN SysInit */
-  
-  /* USER CODE END SysInit */
-
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USART1_UART_Init();
   MX_USART3_UART_Init();
   MX_ICACHE_Init();
-  /* USER CODE BEGIN 2 */
   
   appInit();
 
@@ -468,7 +447,6 @@ static void MX_GPIO_Init(void)
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
-/* USER CODE BEGIN 4 */
 /**
 * @brief ExpressLink module Configuration
 * @retval None
@@ -476,15 +454,13 @@ static void MX_GPIO_Init(void)
 void appInit(void)
 {
   printf("[INFO] Starting\r\n");
-  
   HAL_Delay(2 * ESP32_BOOT_DELAY);
   
-  /* Reset the ExpressLink module */
-//  response = esp32_reset();
-//  printf("response is %s\r\n", response);
+  /* Reset the ESP32 module is not required */
+  // response = esp32_reset();
 
   response = esp32_mode();
-  response = esp32_setwifi(SSID, WIFI_PW);
+  response = esp32_setwifi(WIFI_SSID, WIFI_PW);
   if (check_at_response(response) == 0) {   //wifi is not connected
 	  printf("System reboot......\r\n");
 	  NVIC_SystemReset();
@@ -506,7 +482,6 @@ void appInit(void)
 	  printf("System reboot......\r\n");
 	  NVIC_SystemReset();
   }
-  return;
 }
 
 static void Process(void)
@@ -520,7 +495,7 @@ static void Process(void)
   if (1)
   {
     send_telemetry_data();
-	HAL_Delay(5000);
+	HAL_Delay(MQTT_PUBLISH_TIME_BETWEEN_MS);
     
     if (nloops-- == 0) {
       //ESP32_Disonnect();
@@ -535,40 +510,8 @@ static void Process(void)
     }
   }
 }
-/* USER CODE END 4 */
 
-static int string_add_backslash(char* data, char* output_str) {
-  bool add_backslash = false;
-  int str_len = strlen(data);
-  if (str_len > 256) {
-	  return -1;
-  }
-  for (int i = 0; i < str_len + 1; i++) {  //strlen(data)+1 is for the last char \0
-	  switch (*data) {
-	    case '"':
-		  add_backslash = true;
-		  break;
-	    case '\\':
-		  add_backslash = true;
-		  break;
-	    case ',':
-	      add_backslash = true;
-	      break;
-	    default:
-	      add_backslash = false;
-	      break;
-	  }
-	  if (add_backslash) {
-		  *output_str = '\\';
-		  output_str++;
-	  }
 
-	  *output_str = *data;
-	  output_str++;
-	  data++;
-  }
-  return 0;
-}
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
