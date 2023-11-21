@@ -10,6 +10,8 @@ for connecting to Avnet's IoTConnect Platform.
 which is named "USB Serial". Use defaults for 115200 baud: 8 bits, 1 stop bit, no flow control or parity. 
 Firmware logs will be available on that COM port. 
 
+**Note**: For EBV ESP32 shield, the two switches are required to be at "EXT" and "SLAVE" positions in order to work with a host board.
+
 
 ## Software Preparation
 - Follow the instructions to create STM32 projects in this GitHub [repository](https://github.com/stm32-hotspot/I-CUBE-ExpressLink).
