@@ -1,7 +1,6 @@
 /**
 ******************************************************************************
 * @file           : esp32.h
-* @version        : v 1.0.0
 * @brief          : This file implements esp32 mini driver header
 */
 #include "main.h"
