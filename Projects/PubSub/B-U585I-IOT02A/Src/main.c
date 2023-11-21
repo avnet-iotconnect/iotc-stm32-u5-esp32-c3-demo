@@ -32,20 +32,20 @@
 
 /* Private define ------------------------------------------------------------*/
 
-#define MQTT_PUBLISH_TIME_BETWEEN_MS        ( 5000 )
-#define NUMBER_OF_MSG						200
+#define MQTT_PUBLISH_TIME_BETWEEN_MS    ( 5000 )
+#define NUMBER_OF_MSG                     200
 
-#define APP_VERSION							"01.00.01"
+#define APP_VERSION             "01.00.01"
 
-#define WIFI_SSID							"your-wifi-ssid"
-#define WIFI_PW							"your-wifi-password"
+#define WIFI_SSID               "your-wifi-ssid"
+#define WIFI_PW                 "your-wifi-password"
 
-#define SNTP_SERVER							"time.google.com"
+#define SNTP_SERVER             "time.google.com"
 
-#define MQTT_HOST							"poc-iotconnect-iothub-030-eu2.azure-devices.net"
-#define MQTT_CLIENT_ID						""
-#define MQTT_USERNAME_FORMAT				"%s/%s/?api-version=2018-06-30"
-#define MQTT_TOPIC_FORMAT					"devices/%s/messages/events/"
+#define MQTT_HOST               "poc-iotconnect-iothub-030-eu2.azure-devices.net"
+#define MQTT_CLIENT_ID          ""
+#define MQTT_USERNAME_FORMAT    "%s/%s/?api-version=2018-06-30"
+#define MQTT_TOPIC_FORMAT       "devices/%s/messages/events/"
 
 
 UART_HandleTypeDef huart1;
